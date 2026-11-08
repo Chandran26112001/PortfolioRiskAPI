@@ -1,0 +1,31 @@
+[project]
+name = "portfolio-risk-api"
+version = "0.1.0"
+description = "Fund valuation, exposure and historical VaR/Expected Shortfall API"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.162.2",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.4",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors: basic style problems
+    "W",    # pycodestyle warnings: whitespace problems
+    "F",    # Pyflakes: unused imports and undefined names
+    "I",    # isort: import ordering
+    "N",    # pep8-naming: naming conventions
+    "UP",   # pyupgrade: replace outdated syntax with modern Python
+    "B",    # flake8-bugbear: likely bugs and risky patterns
+    "ANN",  # flake8-annotations: missing type hints
+    "FAST", # FastAPI: framework-specific mistakes
+]
