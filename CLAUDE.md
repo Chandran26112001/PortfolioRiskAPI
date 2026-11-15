@@ -14,7 +14,7 @@ The goal is **not** just a working app. The goal is that Chandran can build, exp
 - **Map to Spring Boot where it helps.** Example: FastAPI `Depends` ≈ Spring dependency injection; Pydantic models ≈ DTOs with Bean Validation; Alembic ≈ Flyway/Liquibase; routers ≈ `@RestController` classes.
 - **End each stage with "What a reviewer would ask":** 3 to 5 questions a senior engineer would ask about that stage's code, with short answers.
 - **Keep a learning log** in `NOTES.md`: for each stage, a few lines on what was learned, in Chandran's terms.
-- **He is on Windows.** Give PowerShell-friendly commands.
+- **He is on Windows.** Give PowerShell-friendly commands. Docker is installed on his machine.
 - Keep code idiomatic and production-style: type hints everywhere, small functions, clear names, no clever tricks.
 
 ## What the service does
@@ -56,9 +56,9 @@ Domain notes:
 4. **Testing:** pytest fixtures, a test database, dependency overrides, testing validation errors, coverage.
 5. **Auth:** OAuth2 + JWT, scopes such as `positions:write` and `risk:read`, protecting routes with dependencies, password hashing.
 6. **Batch price load:** a command-line job that loads a prices CSV into the database idempotently (upsert), validates data (missing or negative prices, unknown securities), logs a summary with a run ID, and can be safely re-run.
-7. **Risk engine and async jobs:** VaR and ES with NumPy; `POST /risk-runs` returns a run ID immediately; the calculation runs in a `ProcessPoolExecutor`; `GET /risk-runs/{id}` returns status and results. Explain the GIL, why processes and not threads, and limiting concurrency with a bounded pool or semaphore.
+7. **Risk engine and async jobs:** VaR and ES with NumPy; `POST /risk-runs` returns a run ID immediately; the calculation runs in a `ProcessPoolExecutor`; `GET /risk-runs/{id}` returns status and results. Explain the GIL in depth (what it is, why it matters for CPU-bound vs I/O-bound work, how it affects the web server as well as the risk engine), why processes and not threads, and limiting concurrency with a bounded pool or semaphore.
 8. **Oracle:** run Oracle Database Free in Docker, switch the connection, explain bind variables, bulk fetches and reading an execution plan.
-9. **Containerise:** multi-stage Dockerfile, docker compose (API + Oracle), configuration through environment variables, health checks.
+9. **Containerise:** multi-stage Dockerfile, docker compose (API + Oracle), configuration through environment variables, health checks. Worker processes: how many Uvicorn workers to run (`uvicorn --workers N` vs one process per container), sizing against CPU cores and memory, and checking the choice with a simple load test.
 10. **CI:** GitHub Actions running ruff, tests and an image build on every push.
 11. **Deploy and observe:** deploy to AWS, structured logging, basic metrics. **Before creating anything on AWS that can cost money, tell Chandran the expected cost and get his OK, and show him how to delete it afterwards.**
 
