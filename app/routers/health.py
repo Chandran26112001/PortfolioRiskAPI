@@ -1,15 +1,10 @@
 """Health check endpoint, called by load balancers and container platforms."""
 
-from typing import Literal
-
 from fastapi import APIRouter
-from pydantic import BaseModel
+
+from app.schemas.health import HealthResponse
 
 router = APIRouter(tags=["health"])
-
-
-class HealthResponse(BaseModel):
-    status: Literal["ok"]
 
 
 @router.get("/health", summary="Liveness check")

@@ -14,6 +14,18 @@
 - **Scaling:** because of the GIL, one Python process effectively uses one CPU core for Python code. More cores means more processes (`--workers` or more containers).
 - **PowerShell tip:** use `curl.exe`, because plain `curl` is an alias for `Invoke-WebRequest`.
 
+## Stage 1: Domain models and API without a database (completed 2026-11-20)
+
+- **Decimal vs float:** float is Java's `double` and can't hold 0.1 exactly. `Decimal` is `BigDecimal`. Always build it from a string: `Decimal("0.1")`, never `Decimal(0.1)`. Money stays `Decimal`; only the VaR maths (Stage 7) uses floats.
+- **Pydantic models** are DTOs and Bean Validation in one step. If the object exists, it's valid. All errors are reported at once.
+- **Reusable types** (`Symbol = Annotated[str, ...]`) are like a custom `@Symbol` constraint: one rule, used everywhere.
+- **`BeforeValidator`** runs on raw input before the checks. I needed it because `pattern` checks the raw value, not the stripped/uppercased one. Lesson: test validation order, don't assume.
+- **Create vs Read models:** Create forbids unknown fields (catches client typos), Read doesn't. Decimals go out as JSON strings so clients don't lose precision.
+- **`Depends`** is `@Autowired`: a route declares `store: StoreDep` and FastAPI passes it in. Tests will swap it with `dependency_overrides` (like `@MockBean`).
+- **`async def` + shared state:** no race in check-then-insert because there's no `await` in between and it all runs on one thread. With `def` routes (thread pool) I'd need a lock.
+- **Errors:** the store raises `NotFoundError`/`ConflictError` (no HTTP knowledge); `error_handlers.py` maps them to 404/409 with one JSON shape. That's `@ControllerAdvice`. Also covers 422, unknown paths, 405 and crashes (500 hides internals).
+- **In-memory data** is lost on every reload and isn't shared between worker processes: the database fixes this in Stage 2.
+
 ## Parked for later stages
 
 - GIL in depth: CPU-bound vs I/O-bound work, and its effect on the web server (Stage 7).
