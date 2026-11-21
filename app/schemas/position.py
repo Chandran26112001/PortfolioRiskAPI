@@ -22,6 +22,8 @@ class PositionCreate(BaseModel):
 class PositionRead(BaseModel):
     """A position as returned by the API."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     fund_code: FundCode
     symbol: Symbol
     quantity: Quantity

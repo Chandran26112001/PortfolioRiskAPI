@@ -2,7 +2,7 @@
 
 ## Why this project exists
 
-Chandran is a backend engineer with about 3.5 years of production experience in Java, Spring Boot, Oracle SQL, Angular and AWS. He is moving to a quant risk analysis team whose platform is built on Python and FastAPI, with Oracle as the database.
+Chandran is a backend engineer with about 3.5 years of production experience in Java, Spring Boot, Oracle SQL, Angular and AWS. He is moving to a quant risk analysis team whose platform is built on Python and FastAPI, with Oracle as the database, and whose applications run on Docker and Kubernetes. He knows Oracle from Java; using it from Python is new.
 
 The goal is **not** just a working app. The goal is that Chandran can build, explain and defend every part of a production-style FastAPI service, end to end, so he works confidently in the new team from day one.
 
@@ -40,29 +40,32 @@ Domain notes:
 | Package and env manager | uv |
 | Web framework | FastAPI, Pydantic v2, pydantic-settings for config |
 | Database access | SQLAlchemy 2.0 (typed ORM) + Alembic migrations |
-| Database | SQLite for early stages and tests; Oracle Database Free in Docker from stage 8, via python-oracledb (thin mode) |
-| Auth | OAuth2 password flow with JWT and scopes (simulating what enterprise SSO would provide) |
-| Maths | NumPy, pandas |
+| Database | Oracle Database Free in Docker from stage 2, for development and tests, via python-oracledb (thin mode) |
+| Auth | OAuth2 / OpenID Connect with JWT and scopes; Keycloak in Docker as a local stand-in for enterprise SSO |
+| Maths | NumPy, pandas, JupyterLab for prototyping |
+| Messaging | Kafka |
 | Tests | pytest, FastAPI TestClient / httpx, dependency overrides |
 | Quality | ruff (lint and format) |
-| Packaging and deploy | Docker, docker compose, GitHub Actions, AWS |
+| Packaging and deploy | Docker, docker compose, Kubernetes (Docker Desktop locally, Kustomize for config), GitHub Actions (plus a Jenkinsfile for comparison), Terraform, AWS |
 
 ## Stage plan
 
 0. **Setup:** uv project, folder layout, ruff, first endpoint, `/docs` and `/health`. Explain ASGI and Uvicorn.
 1. **Domain models and API without a database:** Pydantic models for securities, funds, positions and prices; routers; validation; HTTP status codes; error handling; Decimal vs float.
-2. **Database:** SQLAlchemy models, a session provided through a `yield` dependency, a repository layer, Alembic migrations, pagination.
-3. **Valuation endpoints:** market value, weights and sector exposure. Compare doing the aggregation in SQL vs pandas; show the N+1 query problem and how to avoid it.
-4. **Testing:** pytest fixtures, a test database, dependency overrides, testing validation errors, coverage.
-5. **Auth:** OAuth2 + JWT, scopes such as `positions:write` and `risk:read`, protecting routes with dependencies, password hashing.
-6. **Batch price load:** a command-line job that loads a prices CSV into the database idempotently (upsert), validates data (missing or negative prices, unknown securities), logs a summary with a run ID, and can be safely re-run.
-7. **Risk engine and async jobs:** VaR and ES with NumPy; `POST /risk-runs` returns a run ID immediately; the calculation runs in a `ProcessPoolExecutor`; `GET /risk-runs/{id}` returns status and results. Explain the GIL in depth (what it is, why it matters for CPU-bound vs I/O-bound work, how it affects the web server as well as the risk engine), why processes and not threads, and limiting concurrency with a bounded pool or semaphore.
-8. **Oracle:** run Oracle Database Free in Docker, switch the connection, explain bind variables, bulk fetches and reading an execution plan.
-9. **Containerise:** multi-stage Dockerfile, docker compose (API + Oracle), configuration through environment variables, health checks. Worker processes: how many Uvicorn workers to run (`uvicorn --workers N` vs one process per container), sizing against CPU cores and memory, and checking the choice with a simple load test.
-10. **CI:** GitHub Actions running ruff, tests and an image build on every push.
-11. **Deploy and observe:** deploy to AWS, structured logging, basic metrics. **Before creating anything on AWS that can cost money, tell Chandran the expected cost and get his OK, and show him how to delete it afterwards.**
+2. **Database on Oracle:** run Oracle Database Free in Docker with docker compose; SQLAlchemy 2.0 models over python-oracledb (thin mode); a session provided through a `yield` dependency; a repository layer replacing the in-memory store; Alembic migrations; pagination; constraints (primary key, foreign key, unique, check) and indexes. Explain bind variables and how Oracle types map to Python (`NUMBER` to `Decimal`, `DATE`, identity columns).
+3. **Valuation endpoints:** market value, weights and sector exposure. Compare doing the aggregation in SQL vs pandas; show the N+1 query problem and how to avoid it; read the Oracle execution plan of the valuation query. Add data-quality checks (positions with no price, weights that don't sum to 100%).
+4. **Testing:** pytest fixtures, tests running against Oracle in Docker (a disposable test schema), dependency overrides, testing validation errors, coverage. Explain why tests use Oracle and not SQLite (dialect differences, such as Oracle treating an empty string as NULL).
+5. **Flask and Django comparison (short):** rebuild a few endpoints in Flask to see a WSGI framework next to FastAPI, and compare Django's ORM with SQLAlchemy, so either looks familiar on the team. Throwaway code, kept out of the main app.
+6. **Containerise:** multi-stage Dockerfile, docker compose (API + Oracle), configuration through environment variables with pydantic-settings, liveness and readiness checks. Worker processes: how many Uvicorn workers to run (`uvicorn --workers N` vs one process per container), sizing against CPU cores and memory, and checking the choice with a simple load test.
+7. **Kubernetes (local, Docker Desktop):** Deployment, Service, ConfigMap and Secret, liveness and readiness probes, resource requests and limits, rolling updates, scaling replicas vs Uvicorn workers, Kustomize for per-environment config. Oracle stays outside the app's Deployment, as a production database would be managed separately.
+8. **Auth and SSO:** first learn the mechanics with the OAuth2 password flow, our own JWTs and password hashing; then switch to real SSO with Keycloak in Docker as the identity provider (OpenID Connect, validating tokens against its public keys). Scopes such as `positions:write` and `risk:read`, protecting routes with dependencies, and client credentials for service-to-service calls. Secrets come from Kubernetes Secrets.
+9. **Batch price load:** a command-line job that loads a prices CSV into the database idempotently (upsert with Oracle `MERGE`, bulk writes with `executemany`), validates data (missing or negative prices, unknown securities), calls a PL/SQL procedure from Python (for example, a post-load check), logs a summary with a run ID, and can be safely re-run. Runs as a Kubernetes CronJob.
+10. **Risk engine and async jobs:** prototype VaR and ES in a JupyterLab notebook against the Oracle data first (how quants work), then move the code into the service. `POST /risk-runs` returns a run ID immediately; the calculation runs in a `ProcessPoolExecutor`; `GET /risk-runs/{id}` returns status and results. Explain the GIL in depth (what it is, why it matters for CPU-bound vs I/O-bound work, how it affects the web server as well as the risk engine), why processes and not threads, and limiting concurrency with a bounded pool or semaphore. Size the pool from the container's CPU limit, not the host's core count.
+11. **Event-driven with Kafka:** run Kafka in Docker; the batch job publishes a "prices loaded" event and a consumer starts a risk run. Cover at-least-once delivery, idempotent consumers and a dead-letter topic.
+12. **CI:** GitHub Actions running ruff, tests against Oracle, and an image build on every push. Write a Jenkinsfile doing the same steps, to compare the two.
+13. **Deploy and observe:** build the AWS infrastructure with Terraform, so `terraform destroy` removes it all; deploy (compare EKS and ECS); structured logging, basic metrics. **Before creating anything on AWS that can cost money, tell Chandran the expected cost and get his OK, and show him how to delete it afterwards.**
 
-Optional extra: publish a "prices loaded" event to Kafka that triggers a risk run, to show event-driven design.
+Out of scope by Chandran's choice: a branch and pull request per stage, and a TypeScript client or frontend.
 
 ## Definition of done for each stage
 

@@ -21,6 +21,8 @@ class PriceCreate(BaseModel):
 class PriceRead(BaseModel):
     """A closing price as returned by the API."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     symbol: Symbol
     price_date: date
     close: PriceAmount

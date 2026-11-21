@@ -20,3 +20,6 @@ class SecurityCreate(SecurityBase):
 
 class SecurityRead(SecurityBase):
     """A security as returned by the API."""
+
+    # Lets model_validate read attributes from a SQLAlchemy object, not just a dict.
+    model_config = ConfigDict(from_attributes=True)

@@ -9,14 +9,14 @@
 - **Routers** are `@RestController` classes and `@router.get` is `@GetMapping`, but routers are registered explicitly with `include_router`, not found by component scanning.
 - **The return type annotation** (`-> HealthResponse`) drives response validation, filtering and the OpenAPI docs, so the docs can't drift from the code.
 - **`async def` vs `def`:** `async def` runs on the single-threaded event loop, so it must never block. `def` runs in a thread pool. Blocking calls inside `async def` stall every request.
-- **Liveness vs readiness:** `/health` only says the process is up. The database check belongs in a separate readiness probe (Stage 9).
+- **Liveness vs readiness:** `/health` only says the process is up. The database check belongs in a separate readiness probe (Stage 6).
 - **ASGI** is Python's Servlet API: one `async def app(scope, receive, send)` contract. Uvicorn is the Tomcat, Starlette the `DispatcherServlet`, FastAPI the Spring MVC layer on top.
 - **Scaling:** because of the GIL, one Python process effectively uses one CPU core for Python code. More cores means more processes (`--workers` or more containers).
 - **PowerShell tip:** use `curl.exe`, because plain `curl` is an alias for `Invoke-WebRequest`.
 
 ## Stage 1: Domain models and API without a database (completed 2026-11-20)
 
-- **Decimal vs float:** float is Java's `double` and can't hold 0.1 exactly. `Decimal` is `BigDecimal`. Always build it from a string: `Decimal("0.1")`, never `Decimal(0.1)`. Money stays `Decimal`; only the VaR maths (Stage 7) uses floats.
+- **Decimal vs float:** float is Java's `double` and can't hold 0.1 exactly. `Decimal` is `BigDecimal`. Always build it from a string: `Decimal("0.1")`, never `Decimal(0.1)`. Money stays `Decimal`; only the VaR maths (Stage 10) uses floats.
 - **Pydantic models** are DTOs and Bean Validation in one step. If the object exists, it's valid. All errors are reported at once.
 - **Reusable types** (`Symbol = Annotated[str, ...]`) are like a custom `@Symbol` constraint: one rule, used everywhere.
 - **`BeforeValidator`** runs on raw input before the checks. I needed it because `pattern` checks the raw value, not the stripped/uppercased one. Lesson: test validation order, don't assume.
@@ -28,6 +28,6 @@
 
 ## Parked for later stages
 
-- GIL in depth: CPU-bound vs I/O-bound work, and its effect on the web server (Stage 7).
-- How many Uvicorn workers to run against CPU cores and memory, and checking with a load test (Stage 9).
-- Deploying the app (Stage 11).
+- GIL in depth: CPU-bound vs I/O-bound work, and its effect on the web server (Stage 10).
+- How many Uvicorn workers to run against CPU cores and memory, and checking with a load test (Stage 6), then replicas vs workers in Kubernetes (Stage 7).
+- Deploying the app (Stage 13).

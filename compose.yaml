@@ -1,0 +1,23 @@
+# Local development services. Start with: docker compose up -d
+services:
+  oracle:
+    # Community image of Oracle Database Free; "faststart" ships a pre-built database.
+    image: gvenzl/oracle-free:23.26.4-slim-faststart
+    container_name: risk-oracle
+    ports:
+      - "127.0.0.1:1521:1521" # only reachable from this machine
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?Set ORACLE_PASSWORD in .env}
+      APP_USER: ${ORACLE_APP_USER:-risk_app}
+      APP_USER_PASSWORD: ${ORACLE_APP_PASSWORD:?Set ORACLE_APP_PASSWORD in .env}
+    volumes:
+      - oracle-data:/opt/oracle/oradata # keeps data across container restarts
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  oracle-data:

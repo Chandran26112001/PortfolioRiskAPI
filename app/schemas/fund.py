@@ -21,3 +21,5 @@ class FundCreate(FundBase):
 
 class FundRead(FundBase):
     """A fund as returned by the API."""
+
+    model_config = ConfigDict(from_attributes=True)

@@ -1,27 +1,34 @@
 """Endpoints for funds."""
 
-from fastapi import APIRouter, status
+from typing import Annotated
 
-from app.dependencies import StoreDep
+from fastapi import APIRouter, Query, status
+
+from app.dependencies import FundRepoDep
 from app.schemas.errors import CONFLICT, NOT_FOUND, VALIDATION_ERROR
 from app.schemas.fund import FundCreate, FundRead
+from app.schemas.pagination import Page, PageParams
 from app.schemas.types import FundCode
 
 router = APIRouter(prefix="/funds", tags=["funds"], responses=VALIDATION_ERROR)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, summary="Create a fund", responses=CONFLICT)
-async def create_fund(body: FundCreate, store: StoreDep) -> FundRead:
-    fund = FundRead(**body.model_dump())
-    store.add_fund(fund)
-    return fund
+def create_fund(body: FundCreate, funds: FundRepoDep) -> FundRead:
+    return FundRead.model_validate(funds.add(body))
 
 
 @router.get("", summary="List funds")
-async def list_funds(store: StoreDep) -> list[FundRead]:
-    return store.list_funds()
+def list_funds(page: Annotated[PageParams, Query()], funds: FundRepoDep) -> Page[FundRead]:
+    items, total = funds.list_page(page)
+    return Page[FundRead](
+        items=[FundRead.model_validate(fund) for fund in items],
+        total=total,
+        limit=page.limit,
+        offset=page.offset,
+    )
 
 
 @router.get("/{code}", summary="Get a fund", responses=NOT_FOUND)
-async def get_fund(code: FundCode, store: StoreDep) -> FundRead:
-    return store.get_fund(code)
+def get_fund(code: FundCode, funds: FundRepoDep) -> FundRead:
+    return FundRead.model_validate(funds.get_by_code(code))
